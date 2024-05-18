@@ -5,6 +5,9 @@ import 'package:taskifypro/firebase_options.dart';
 import 'package:taskifypro/src/Authentication/presentation/Loginpage.dart';
 import 'package:taskifypro/src/Home/home.dart';
 
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+
 void main() async {
   //
   print('firebase initializing...');
@@ -13,6 +16,9 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   print('firebase initialized');
+
+  // Initialize timezone
+  tz.initializeTimeZones();
 
   runApp(const MyApp());
 }

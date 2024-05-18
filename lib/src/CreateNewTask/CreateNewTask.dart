@@ -2,10 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:lottie/lottie.dart';
 import 'package:taskifypro/common/widgets/Appbar.dart';
 import 'package:taskifypro/common/widgets/ElevetedButton.dart';
 import 'package:taskifypro/common/widgets/Textformfield.dart';
+
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class CreateNewTask extends StatefulWidget {
   const CreateNewTask({super.key});
@@ -25,6 +29,54 @@ class _CreateNewTaskState extends State<CreateNewTask> {
   DateTime _date = DateTime.now();
   TimeOfDay _time = TimeOfDay.now();
   Duration _duration = Duration(hours: 1);
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeNotifications();
+  }
+
+  void _initializeNotifications() {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+
+    flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+    );
+  }
+
+  void _scheduleNotification(
+      String taskId, String title, String description, DateTime dueDate) async {
+    final scheduledDate = dueDate.subtract(Duration(minutes: 15));
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      taskId.hashCode,
+      title,
+      description,
+      tz.TZDateTime.from(scheduledDate, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'your channel id',
+          'your channel name',
+          // 'your channel description',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
+      androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+    );
+  }
 
   void _showDatepicker() async {
     DateTime? pickedDate = await showDatePicker(
@@ -69,6 +121,7 @@ class _CreateNewTaskState extends State<CreateNewTask> {
       Duration estimateTime = _duration;
 
       try {
+        String taskId = DateTime.now().millisecondsSinceEpoch.toString();
         await FirebaseFirestore.instance
             .collection('users')
             .doc(auth.currentUser!.uid)
@@ -84,6 +137,9 @@ class _CreateNewTaskState extends State<CreateNewTask> {
           'created_at': Timestamp.now(),
           'isCompleted': false, // Initialize isCompleted to false
         });
+
+        // Schedule the notification
+        _scheduleNotification(taskId, title, description, dueDate);
 
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Task created successfully')));
@@ -121,7 +177,13 @@ class _CreateNewTaskState extends State<CreateNewTask> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: Text('NEW TASK'),
+        title: const Text(
+          'NEW TASK',
+          style: TextStyle(
+            color: Colors.teal,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         automaticallyImplyLeading: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
@@ -260,7 +322,7 @@ class _CreateNewTaskState extends State<CreateNewTask> {
                   style: ElevatedButton.styleFrom(
                     minimumSize: Size(250, 50),
                     textStyle: TextStyle(fontSize: 20),
-                    primary: Colors.blueAccent.shade200,
+                    primary: Colors.teal,
                     onPrimary: Colors.white,
                     elevation: 4,
                     shape: RoundedRectangleBorder(
